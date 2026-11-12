@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-//
+// ✏️ Change these to your own details
 const NAME = "Kristian Dino Barruga";
-const NETWORK = "Makati Science Technological Insitute of the Philippines";
+const NETWORK = "Makati Science Institute of the Philippines";
 const CITY = "Manila City";
 
 const MAX = 280;
@@ -13,6 +13,7 @@ const MAX = 280;
 type Post = {
   id: string;
   user_id: string | null;
+  name: string | null;
   body: string;
   created_at: string;
 };
@@ -30,6 +31,7 @@ function timeAgo(iso: string, now: number) {
 export default function Wall() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [text, setText] = useState("");
+  const [name, setName] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [now, setNow] = useState<number | null>(null);
   const [message, setMessage] = useState("");
@@ -44,6 +46,7 @@ export default function Wall() {
       localStorage.setItem("wall-user-id", id);
     }
     setUserId(id);
+    setName(localStorage.getItem("wall-name") ?? "");
   }, []);
 
   // A clock, so "5m" / "2h" labels stay fresh
@@ -90,13 +93,14 @@ export default function Wall() {
 
   async function share() {
     const body = text.trim();
-    if (!body || !supabase || sending) return;
+    const author = name.trim();
+    if (!body || !author || !supabase || sending) return;
 
     setSending(true);
     setMessage("");
     const { data, error } = await supabase
       .from("posts")
-      .insert({ body, user_id: userId })
+      .insert({ body, name: author, user_id: userId })
       .select()
       .single();
     setSending(false);
@@ -167,6 +171,16 @@ export default function Wall() {
           )}
 
           <div className="rounded border border-[#bbb] bg-[#f2f2f2] p-3">
+            <input
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                localStorage.setItem("wall-name", e.target.value);
+              }}
+              maxLength={40}
+              placeholder="Your name"
+              className="mb-2 w-full border border-[#bdc7d8] bg-white p-2 outline-none focus:border-[#3b5998]"
+            />
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -181,7 +195,7 @@ export default function Wall() {
               </span>
               <button
                 onClick={share}
-                disabled={!text.trim() || sending || !supabase}
+                disabled={!text.trim() || !name.trim() || sending || !supabase}
                 className="border border-[#29447e] bg-[#5b74a8] px-4 py-1 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {sending ? "Sharing..." : "Share"}
@@ -195,7 +209,9 @@ export default function Wall() {
             {posts.map((post) => (
               <li key={post.id} className="border-b border-[#e5e5e5] py-3">
                 <div className="flex justify-between">
-                  <span className="font-bold text-[#3b5998]">{NAME}</span>
+                  <span className="font-bold text-[#3b5998]">
+                    {post.name || NAME}
+                  </span>
                   <span className="text-xs text-[#999]">
                     {now !== null ? timeAgo(post.created_at, now) : ""}
                   </span>
